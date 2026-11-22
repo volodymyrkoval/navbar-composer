@@ -1,0 +1,371 @@
+/*
+ * Plugin styles. Use Obsidian CSS variables (e.g. var(--text-normal)) and
+ * class names; never hardcode colors or set inline styles from code.
+ */
+
+/* Native navbar: hide an action the user turned off (AC5). */
+.navbar-composer-hidden {
+	display: none !important;
+}
+
+/* Native navbar: apply the position from --navbar-composer-order (AC6). */
+.navbar-composer-ordered {
+	order: var(--navbar-composer-order);
+}
+
+/*
+ * Tablet bar. Obsidian builds its own floating navbar on iPad and hides it with CSS. The plugin
+ * shows it only while at least one tablet item is visible (body class, KD11). The !important
+ * rules beat Obsidian's `body.is-tablet .mobile-navbar` rules (spike override).
+ */
+body.navbar-composer-tablet-bar-shown .mobile-navbar {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	transition: opacity 150ms ease, transform 150ms ease;
+}
+
+/*
+ * Obsidian sizes the floating pill for its six buttons: `.is-mobile.is-floating-nav` sets `--navbar-max-width: 316px`
+ * with `--navbar-width: fit-content`, and the pill (not the actions row) draws the background. With more items the
+ * icons spill past the pill. Lift the cap to the viewport minus side margins (follows rotation); centring is
+ * `margin: 0 auto; left: 0; right: 0`, so no transform is involved and the hide transform below is unaffected.
+ * Specificity beats `.mobile-navbar`, so no !important.
+ */
+body.navbar-composer-tablet-bar-shown .mobile-navbar {
+	max-width: calc(100vw - 2 * var(--size-4-4));
+}
+
+/* When even that is not enough, scroll the row inside the pill: one line, no scrollbar, touch scrolling kept. */
+body.navbar-composer-tablet-bar-shown .mobile-navbar-actions {
+	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+body.navbar-composer-tablet-bar-shown .mobile-navbar-actions::-webkit-scrollbar {
+	display: none;
+}
+
+/* Obsidian's buttons shrink (flex-shrink 1); keep each at full width so they scroll instead of overlapping. */
+body.navbar-composer-tablet-bar-shown .mobile-navbar-action {
+	flex: none;
+}
+
+/*
+ * Phone floating pill. Obsidian caps it at 316px (`.is-mobile.is-floating-nav`), room for six 52px buttons
+ * that already shrink to fit. The same overflow fix as the tablet applies, but only once a seventh visible
+ * button exists (`:nth-child(7 of :not(.navbar-composer-hidden))`), so a bar with six or fewer buttons keeps
+ * Obsidian's own width and shrinking pixel for pixel. The pill is centred with `margin: 0 auto; left: 0; right: 0`
+ * and hidden on scroll with `.is-hidden-nav .mobile-navbar { transform: translateY(...) }`; neither is touched.
+ * The row's `overflow-y: hidden` clips nothing: the buttons are the row's full height and the menu's flair
+ * (`position: absolute; top: 0; height: 100%`) stays inside it; it may lose a pixel or two at the left edge when
+ * the menu is the first button. The non-floating phone bar (full width, buttons shrink) is left alone.
+ */
+body.is-phone.is-floating-nav .mobile-navbar:has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden))) {
+	max-width: calc(100vw - 2 * var(--size-4-4));
+}
+
+body.is-phone.is-floating-nav .mobile-navbar:has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden))) .mobile-navbar-actions {
+	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+body.is-phone.is-floating-nav .mobile-navbar:has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden))) .mobile-navbar-actions::-webkit-scrollbar {
+	display: none;
+}
+
+body.is-phone.is-floating-nav .mobile-navbar:has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden))) .mobile-navbar-action {
+	flex: none;
+}
+
+/*
+ * Obsidian gives the menu button `margin-inline-start: var(--size-4-2)` (`.mobile-navbar-action.has-longpress-menu`),
+ * 8px of extra air in front of it: that is the wider gap next to the new-tab button. Drop it once the user has
+ * customised the bar (a custom button exists or a seventh visible button); an untouched bar keeps Obsidian's look.
+ */
+body.is-phone.is-floating-nav .mobile-navbar:is(:has(.navbar-composer-action), :has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden)))) .mobile-navbar-action.has-longpress-menu {
+	margin-inline-start: 0;
+}
+
+/* Scrolled away or editing toolbar open: slide the bar out (AC9, KD8). */
+body.navbar-composer-tablet-bar-shown .mobile-navbar.navbar-composer-bar-hidden {
+	opacity: 0 !important;
+	transform: translateY(100%);
+	pointer-events: none;
+}
+
+/* Settings: live preview of the navbar layout. */
+.navbar-composer-preview {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	min-height: var(--size-4-12);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: 1;
+	box-sizing: border-box;
+}
+
+/* The control area the pill is rendered into must not pin it to the top or stretch it. */
+.setting-item-control:has(> .navbar-composer-preview) {
+	align-items: center;
+	align-self: center;
+}
+
+.setting-item-control > .navbar-composer-preview {
+	align-self: center;
+}
+
+.navbar-composer-preview-item {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--size-4-8);
+	min-height: var(--size-4-8);
+	padding: var(--size-4-1);
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	line-height: 1;
+}
+
+/*
+ * Obsidian's `.clickable-icon` brings its own height, padding and line-height, and the svg is inline by
+ * default (baseline gap). Normalise both so the icon sits exactly in the middle of the item.
+ */
+.navbar-composer-preview-item .clickable-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	line-height: 1;
+}
+
+.navbar-composer-preview-item svg {
+	display: block;
+	margin: 0;
+}
+
+/* A custom button whose command is not installed (AC11): muted, outlined in error colour. */
+.navbar-composer-preview-item.is-missing {
+	color: var(--text-muted);
+	outline: 1px dashed var(--text-error);
+	outline-offset: 2px;
+}
+
+/* Settings: icon shown in front of a row's name; the name line never wraps, so the icon stays on that line. */
+.navbar-composer-row-icon {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	align-self: flex-start;
+	height: calc(1em * var(--line-height-normal));
+	margin-right: var(--size-4-2);
+	color: var(--text-muted);
+}
+
+/*
+ * Settings row: two lines on a grid. Top: the name across the full width. Bottom: description (and, on custom
+ * rows, edit and delete) on the left, the controls (up, down, toggle) at the right edge. `.setting-item-info` is
+ * flattened with `display: contents` so the name and description become grid items next to the control area.
+ * Obsidian's `.setting-item { display: flex }` and its `@container (max-width: 340px)` column rules (specificity
+ * up to 0,4,0, no !important) are out-ranked by the `body` prefix plus the extra row class; no !important needed.
+ */
+body .setting-item.navbar-composer-row:not(.setting-item-heading) {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas:
+		"name name"
+		"desc control";
+	align-items: center;
+	column-gap: var(--size-4-2);
+	row-gap: 0;
+}
+
+body .setting-item.navbar-composer-row:not(.setting-item-heading) .setting-item-info {
+	display: contents;
+}
+
+body .setting-item.navbar-composer-row:not(.setting-item-heading) .setting-item-name {
+	grid-area: name;
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: flex-start;
+	min-width: 0;
+	/* Obsidian clips this box with `overflow: hidden`; the icon and badge can reach past it, so the name span clips itself instead. */
+	overflow: visible;
+}
+
+body .setting-item.navbar-composer-row:not(.setting-item-heading) .setting-item-description {
+	grid-area: desc;
+	align-self: center;
+	min-width: 0;
+}
+
+/* Controls (up, down, toggle) sit at the right edge, centred on the bottom line; width must not become 100%. */
+body .setting-item.navbar-composer-row:not(.setting-item-heading) .setting-item-control {
+	grid-area: control;
+	flex: none;
+	width: auto;
+	justify-self: end;
+	align-self: center;
+	justify-content: flex-end;
+	margin: 0;
+}
+
+/* Hidden rows: title and description fade; the controls stay fully legible. Colour only, so the edit and delete buttons keep theirs. */
+.navbar-composer-row-off .navbar-composer-row-icon,
+.navbar-composer-row-off .navbar-composer-row-name,
+.navbar-composer-row-off .setting-item-description {
+	color: var(--text-faint);
+}
+
+/* Long names are cut with an ellipsis on one line; the icon and the missing-command badge keep their full width. */
+.navbar-composer-row-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	overflow-wrap: normal;
+}
+
+.navbar-composer-row .navbar-composer-warning {
+	flex: none;
+}
+
+/* Custom rows: description text first, then edit and delete buttons beside it. */
+.navbar-composer-row-desc {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1) var(--size-4-2);
+	overflow: visible;
+}
+
+.navbar-composer-row-action {
+	flex: none;
+}
+
+/* Settings: icon shown in the edit modal and the icon picker. */
+.navbar-composer-icon-preview {
+	display: inline-flex;
+	align-items: center;
+	margin-right: var(--size-4-2);
+	color: var(--text-normal);
+}
+
+/* Settings: "Command not found" badge on a row whose custom command is missing (AC11). */
+.navbar-composer-warning {
+	margin-left: var(--size-4-2);
+	padding: var(--size-2-1) var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-error);
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+
+/*
+ * Edit modal: compact, balanced rows (title, value line underneath, equal-width button on the right).
+ * Width: `.modal` sets `width: var(--dialog-width)` (560px); `.modal.navbar-composer-edit-modal` out-specifies it.
+ * The phone keeps Obsidian's full-width drawer, so the width override is limited to `body:not(.is-phone)`.
+ * Obsidian's phone layout (`.is-phone .modal .setting-item:not(:is(.mod-toggle, .setting-item-heading))`,
+ * `.is-phone .modal .setting-item-control button:not(.clickable-icon)`) stacks the setting and makes buttons full
+ * width; none of those rules use !important, they just have high specificity. The class sits on the `.modal`
+ * element, and the `body.is-phone .modal.navbar-composer-edit-modal` prefix out-ranks them. The `:is()` keeps
+ * other devices working.
+ */
+body:not(.is-phone) .modal.navbar-composer-edit-modal {
+	width: min(440px, calc(100vw - 2 * var(--size-4-4)));
+}
+
+.navbar-composer-edit-modal .modal-title {
+	margin-bottom: var(--size-4-3);
+}
+
+:is(.modal.navbar-composer-edit-modal, body.is-phone .modal.navbar-composer-edit-modal) .setting-item {
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin: 0;
+	padding-block: var(--size-4-3);
+	border: 0;
+	background: none;
+}
+
+body:not(.is-phone) .modal.navbar-composer-edit-modal .setting-item {
+	padding-inline: 0;
+}
+
+/* The only divider: between the last row and the footer. */
+:is(.modal.navbar-composer-edit-modal, body.is-phone .modal.navbar-composer-edit-modal) .setting-item.navbar-composer-edit-actions {
+	margin-top: var(--size-4-2);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+:is(.modal.navbar-composer-edit-modal, body.is-phone .modal.navbar-composer-edit-modal) .setting-item .setting-item-info {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* Value line: long command names and icon names are cut with an ellipsis. */
+.navbar-composer-edit-modal .setting-item-description {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.navbar-composer-edit-modal .setting-item-description.navbar-composer-icon-value {
+	display: flex;
+	align-items: center;
+}
+
+.navbar-composer-icon-value .navbar-composer-icon-preview {
+	flex: none;
+	margin-right: var(--size-4-1);
+	--icon-size: var(--icon-s);
+}
+
+.navbar-composer-icon-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+:is(.modal.navbar-composer-edit-modal, body.is-phone .modal.navbar-composer-edit-modal) .setting-item .setting-item-control {
+	flex: none;
+	width: auto;
+	justify-content: flex-end;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+/* Change, Save and Cancel share one size. */
+:is(.modal.navbar-composer-edit-modal, body.is-phone .modal.navbar-composer-edit-modal) .setting-item .setting-item-control button {
+	width: auto;
+	min-width: 88px;
+	height: max(var(--input-height), 36px);
+	margin: 0;
+	padding: 0 var(--size-4-3);
+	font-size: var(--font-ui-small);
+}
+
+/* Settings: preview icons can be tapped (or hovered) to see which button they are. */
+.navbar-composer-preview-item {
+	cursor: pointer;
+}

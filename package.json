@@ -1,0 +1,47 @@
+{
+  "name": "navbar-composer",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/volodymyrkoval/navbar-composer.git"
+  },
+  "homepage": "https://github.com/volodymyrkoval/navbar-composer#readme",
+  "bugs": {
+    "url": "https://github.com/volodymyrkoval/navbar-composer/issues"
+  },
+  "description": "Compose the mobile navigation bar: any command, any icon, any order, separately for phone and tablet.",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "test": "vitest run",
+    "lint": "eslint . && npm run arch:check",
+    "arch:check": "depcruise src tests --config .dependency-cruiser.cjs"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "navbar",
+    "mobile"
+  ],
+  "devDependencies": {
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "dependency-cruiser": "^18.8.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "eslint-plugin-obsidianmd": "^0.6.0",
+    "globals": "^17.14.0",
+    "jsdom": "^31.0.1",
+    "obsidian": "^1.14.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
+  }
+}

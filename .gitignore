@@ -1,0 +1,12 @@
+node_modules
+main.js
+data.json
+.DS_Store
+.idea
+reports/
+coverage
+*.map
+
+# Local-only: private workflow notes, plans and specs
+docs/
+.claude/
