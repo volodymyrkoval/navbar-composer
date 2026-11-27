@@ -4,10 +4,10 @@ import {
 	initialVisibility,
 	isBarVisible,
 	reduceVisibility,
-	shouldShowTabletBar,
 	type VisibilityEvent,
 	type VisibilityState,
 } from '../core/tabletVisibility';
+import { hasVisibleItems } from '../core/hasVisibleItems';
 import { ensureClassAdded, ensureClassRemoved } from '../dom/idempotentDom';
 import type { ScrollDeltaTracker } from '../core/scrollTracker';
 import type { NavItem } from '../core/settingsModel';
@@ -141,7 +141,7 @@ export class TabletVisibilityController extends Component {
 
 	#syncShown(): void {
 		const body = this.#deps.doc.body;
-		if (shouldShowTabletBar(this.#items)) {
+		if (hasVisibleItems(this.#items)) {
 			ensureClassAdded(body, TABLET_BAR_SHOWN_CLASS);
 		} else {
 			ensureClassRemoved(body, TABLET_BAR_SHOWN_CLASS);

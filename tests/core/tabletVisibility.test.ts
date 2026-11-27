@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultSettings, type CustomItem, type NavItem } from '../../src/core/settingsModel';
-import { initialVisibility, isBarVisible, reduceVisibility, shouldShowTabletBar, type VisibilityState } from '../../src/core/tabletVisibility';
+import { initialVisibility, isBarVisible, reduceVisibility, type VisibilityState } from '../../src/core/tabletVisibility';
 
 const FRESH_TAB = initialVisibility({ toolbarOpen: false, emptyTab: false });
 const EMPTY_TAB = initialVisibility({ toolbarOpen: false, emptyTab: true });
-
-const HIDDEN_CUSTOM: CustomItem = { kind: 'custom', id: 'custom-1', commandId: 'app:help', icon: 'help', label: 'Help', visible: false };
-const VISIBLE_CUSTOM: CustomItem = { ...HIDDEN_CUSTOM, id: 'custom-2', visible: true };
 
 function scroll(state: VisibilityState, direction: 'up' | 'down' | null, atBottom = false): VisibilityState {
 	return reduceVisibility(state, { type: 'scrolled', direction, atBottom });
@@ -80,31 +76,5 @@ describe('tablet bar visibility', () => {
 		reduceVisibility(state, { type: 'context-changed', emptyTab: true });
 
 		expect(state).toEqual(snapshot);
-	});
-});
-
-describe('shouldShowTabletBar', () => {
-	it('shows the tablet bar when at least one item is visible', () => {
-		const items: NavItem[] = [{ kind: 'native', id: 'back', visible: true }];
-
-		expect(shouldShowTabletBar(items)).toBe(true);
-	});
-
-	it('hides the tablet bar for an empty list', () => {
-		expect(shouldShowTabletBar([])).toBe(false);
-	});
-
-	it('hides the tablet bar for the fresh-install tablet defaults (all natives hidden)', () => {
-		expect(shouldShowTabletBar(createDefaultSettings().tablet)).toBe(false);
-	});
-
-	it('hides the tablet bar when every custom item is hidden', () => {
-		expect(shouldShowTabletBar([HIDDEN_CUSTOM])).toBe(false);
-	});
-
-	it('shows the tablet bar when a single custom item is visible among hidden natives', () => {
-		const items: NavItem[] = [...createDefaultSettings().tablet, VISIBLE_CUSTOM];
-
-		expect(shouldShowTabletBar(items)).toBe(true);
 	});
 });

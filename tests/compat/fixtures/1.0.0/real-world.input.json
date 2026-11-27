@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "phone": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": false
+    },
+    {
+      "kind": "custom",
+      "id": "custom-phone-1",
+      "commandId": "omnisearch:show-modal",
+      "icon": "lucide-search",
+      "label": "Custom button 1",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "custom-phone-2",
+      "commandId": "quickadd:choice:00000000-0000-4000-8000-000000000001",
+      "icon": "lucide-check-square-2",
+      "label": "Custom button 2",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "custom-phone-3",
+      "commandId": "templater-obsidian:create-new-note-from-template",
+      "icon": "lucide-notebook-pen",
+      "label": "Custom button 3",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": true
+    }
+  ],
+  "tablet": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": false
+    },
+    {
+      "kind": "custom",
+      "id": "custom-tablet-1",
+      "commandId": "quickadd:choice:00000000-0000-4000-8000-000000000001",
+      "icon": "admonition-add-command",
+      "label": "Custom button 1",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "custom-tablet-2",
+      "commandId": "omnisearch:show-modal",
+      "icon": "lucide-search",
+      "label": "Custom button 2",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "custom-tablet-3",
+      "commandId": "workspaces:open-modal",
+      "icon": "lucide-layout-grid",
+      "label": "Custom button 3",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "custom-tablet-4",
+      "commandId": "workspace:split-vertical",
+      "icon": "lucide-split-square-horizontal",
+      "label": "Custom button 4",
+      "visible": true
+    }
+  ]
+}

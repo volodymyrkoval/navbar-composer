@@ -2,6 +2,8 @@
  * Turns untrusted stored data into valid Settings (KD10 persistence boundary).
  */
 
+import { isRecord } from './isRecord';
+import { normalizePins } from './normalizePins';
 import {
 	createDefaultSettings,
 	type CustomItem,
@@ -17,10 +19,12 @@ import {
 /** Accepts whatever `data.json` holds and returns settings the rest of the plugin can trust. */
 export function normalizeSettings(raw: unknown): Settings {
 	if (!isRecord(raw)) return createDefaultSettings();
+	const pins = normalizePins(raw.pins);
 	return {
 		version: 1,
 		phone: normalizeDevice(raw.phone, 'phone'),
 		tablet: normalizeDevice(raw.tablet, 'tablet'),
+		...(pins === undefined ? {} : { pins }),
 	};
 }
 
@@ -70,8 +74,4 @@ function ensureAllNatives(items: NavItem[], missingVisible: boolean): NavItem[] 
 		(id): NativeItem => ({ kind: 'native', id, visible: missingVisible }),
 	);
 	return [...items, ...missing];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

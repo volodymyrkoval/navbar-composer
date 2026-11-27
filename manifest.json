@@ -1,7 +1,7 @@
 {
 	"id": "navbar-composer",
 	"name": "Navbar Composer",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"minAppVersion": "1.13.0",
 	"description": "Compose the mobile navigation bar: any command, any icon, any order, separately for phone and tablet.",
 	"author": "Volodymyr Koval",

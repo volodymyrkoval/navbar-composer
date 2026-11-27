@@ -1,8 +1,12 @@
 import type { App } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
-import { NATIVE_IDS, type NavItem } from '../../src/core/settingsModel';
+import { NATIVE_IDS, type LayoutPins, type NavItem } from '../../src/core/settingsModel';
 import { NavbarController } from '../../src/navbar/navbarController';
 import { NavbarRenderer } from '../../src/navbar/navbarRenderer';
+import type { RequestFrame } from '../../src/dom/requestFrame';
+import type { ObserveResize } from '../../src/dom/observeResize';
+import { OverflowIndicator } from '../../src/navbar/overflowIndicator';
+import { SCROLL_TRACK_CLASS, ScrollTrack, THUMB_PROGRESS_VAR } from '../../src/navbar/scrollTrack';
 import { CommandRunner } from '../../src/platform/commandRunner';
 import { createObsidianInternals } from '../../src/platform/obsidianInternals';
 import { createFakeApp } from '../fakes/fakeApp';
@@ -12,16 +16,170 @@ function nativeItems(hidden: readonly string[] = []): NavItem[] {
 	return NATIVE_IDS.map((id) => ({ kind: 'native', id, visible: !hidden.includes(id) }));
 }
 
+interface SetupOptions {
+	pins?: LayoutPins;
+	overflow?: OverflowIndicator;
+}
+
 /** A controller wired to a fake app whose navbar is `navbar` (`null` = Obsidian exposes none). */
-function setup(navbar: HTMLElement | null, items: readonly NavItem[] = nativeItems()) {
+function setup(navbar: HTMLElement | null, items: readonly NavItem[] = nativeItems(), options: SetupOptions = {}) {
 	const { app, commands } = createFakeApp({ navbar, commands: [{ id: 'app:go-back', name: 'Go back' }] });
 	const internals = createObsidianInternals(app as unknown as App);
 	const warn = vi.fn<(message: string) => void>();
 	const renderer = new NavbarRenderer();
 	const runner = new CommandRunner(internals.commands);
-	const controller = new NavbarController({ internals, renderer, runner, warn }, items);
-	return { controller, warn, renderer, runner, commands };
+	const overflow = options.overflow ?? new OverflowIndicator(() => () => {});
+	const controller = new NavbarController({ internals, renderer, runner, overflow, warn }, items, options.pins);
+	return { controller, warn, renderer, runner, commands, overflow };
 }
+
+describe('NavbarController pins', () => {
+	it('passes the pins to the renderer when loaded', () => {
+		const navbar = buildNavbar();
+		const items = nativeItems();
+		const pins = { pinStart: true };
+		const { controller, renderer } = setup(navbar, items, { pins });
+		const apply = vi.spyOn(renderer, 'apply');
+
+		controller.load();
+
+		expect(apply).toHaveBeenCalledWith(navbar, items, pins);
+	});
+
+	it('passes the new pins to the renderer on every setItems', () => {
+		const navbar = buildNavbar();
+		const { controller, renderer } = setup(navbar, nativeItems());
+		controller.load();
+		const apply = vi.spyOn(renderer, 'apply');
+		const items = nativeItems(['back']);
+		const pins = { pinEnd: true };
+
+		controller.setItems(items, pins);
+
+		expect(apply).toHaveBeenCalledWith(navbar, items, pins);
+	});
+});
+
+/** Stores the resize callback so a test can fire it, as ResizeObserver would after a layout change. */
+function recordingResize(): { observeResize: ObserveResize; fire(): void } {
+	let callback: (() => void) | null = null;
+	return {
+		observeResize: (_el, onResize) => {
+			callback = onResize;
+			return () => {
+				callback = null;
+			};
+		},
+		fire: () => callback?.(),
+	};
+}
+
+/** jsdom has no layout: give the row a 600px content box in a 300px viewport, scrolled to `scrollLeft`. */
+function overflowingRow(row: HTMLElement, scrollLeft = 0): void {
+	Object.defineProperties(row, {
+		scrollWidth: { value: 600 },
+		clientWidth: { value: 300 },
+		scrollLeft: { value: scrollLeft, writable: true },
+	});
+}
+
+describe('NavbarController overflow', () => {
+	it('tracks the actions row once loaded', () => {
+		const navbar = buildNavbar();
+		const overflow = new OverflowIndicator(() => () => {});
+		const track = vi.spyOn(overflow, 'track');
+		const { controller } = setup(navbar, nativeItems(), { overflow });
+
+		controller.load();
+
+		expect(track).toHaveBeenLastCalledWith(actionsRow(navbar), navbar);
+	});
+
+	it('tracks the actions row again after every setItems', () => {
+		const navbar = buildNavbar();
+		const overflow = new OverflowIndicator(() => () => {});
+		const track = vi.spyOn(overflow, 'track');
+		const { controller } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+
+		controller.setItems(nativeItems(['back']));
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track).toHaveBeenLastCalledWith(actionsRow(navbar), navbar);
+	});
+
+	it('re-renders once for a scroll-driven overflow class, then settles (KD-5)', async () => {
+		const navbar = buildNavbar();
+		const row = actionsRow(navbar);
+		overflowingRow(row);
+		const resize = recordingResize();
+		const overflow = new OverflowIndicator(resize.observeResize);
+		const { controller, renderer } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+		resize.fire();
+		const apply = vi.spyOn(renderer, 'apply');
+
+		row.scrollLeft = 150;
+		row.dispatchEvent(new Event('scroll'));
+		await flushObserver();
+		await flushObserver();
+		expect(apply).toHaveBeenCalledTimes(1);
+
+		await flushObserver();
+		await flushObserver();
+		expect(apply).toHaveBeenCalledTimes(1);
+	});
+
+	it('discards the overflow classes its own render writes, so an external render does not re-render (KD-5)', async () => {
+		const navbar = buildNavbar();
+		const row = actionsRow(navbar);
+		overflowingRow(row);
+		const resize = recordingResize();
+		const overflow = new OverflowIndicator(resize.observeResize);
+		const { controller, renderer } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+		const apply = vi.spyOn(renderer, 'apply');
+
+		navbar.classList.add('some-foreign-class');
+		await flushObserver();
+		await flushObserver();
+		expect(row.classList.contains('navbar-composer-has-overflow-end')).toBe(true);
+		expect(apply).toHaveBeenCalledTimes(1);
+
+		await flushObserver();
+		await flushObserver();
+		expect(apply).toHaveBeenCalledTimes(1);
+	});
+
+	it('restores the navbar to its pristine markup on unload, with pins and a fired resize', () => {
+		const navbar = buildNavbar();
+		const original = navbar.outerHTML;
+		overflowingRow(actionsRow(navbar));
+		const resize = recordingResize();
+		const overflow = new OverflowIndicator(resize.observeResize);
+		const { controller } = setup(navbar, nativeItems(), { overflow, pins: { pinStart: true, pinEnd: true } });
+		controller.load();
+		resize.fire();
+		expect(navbar.outerHTML).not.toBe(original);
+
+		controller.unload();
+
+		expect(navbar.outerHTML).toBe(original);
+	});
+
+	it('never tracks and warns once when Obsidian exposes no navbar', () => {
+		const overflow = new OverflowIndicator(() => () => {});
+		const track = vi.spyOn(overflow, 'track');
+		const { controller, warn } = setup(null, nativeItems(), { overflow });
+
+		controller.load();
+		controller.setItems(nativeItems(['back']));
+		controller.unload();
+
+		expect(track).not.toHaveBeenCalled();
+		expect(warn).toHaveBeenCalledTimes(1);
+	});
+});
 
 describe('NavbarController lifecycle', () => {
 	it('applies the items to the navbar when loaded', () => {
@@ -112,6 +270,17 @@ describe('NavbarController observer', () => {
 		await flushObserver();
 
 		expect(back.classList.contains('navbar-composer-hidden')).toBe(true);
+	});
+
+	it('re-applies the empty marker after Obsidian rewrites the container className', async () => {
+		const navbar = buildNavbar();
+		const { controller } = setup(navbar, nativeItems(NATIVE_IDS));
+		controller.load();
+
+		navbar.className = 'mobile-navbar mod-raised';
+		await flushObserver();
+
+		expect(navbar.classList.contains('navbar-composer-empty')).toBe(true);
 	});
 
 	it('renders once and writes nothing when a foreign class is added to the container', async () => {
@@ -284,5 +453,147 @@ describe('NavbarController setItems', () => {
 		controller.setItems(nativeItems(['back']));
 
 		expect(navbar.outerHTML).toBe(original);
+	});
+});
+
+interface ManualFrames {
+	requestFrame: RequestFrame;
+	flush(): void;
+	pending(): number;
+}
+
+/** Queues frame callbacks until a test flushes them, so each frame runs exactly when the test says. */
+function manualFrames(): ManualFrames {
+	const queued: { callback: () => void; cancelled: boolean }[] = [];
+	return {
+		requestFrame: (callback) => {
+			const frame = { callback, cancelled: false };
+			queued.push(frame);
+			return () => {
+				frame.cancelled = true;
+			};
+		},
+		flush: () => {
+			for (const frame of queued.splice(0)) {
+				if (!frame.cancelled) frame.callback();
+			}
+		},
+		pending: () => queued.filter((frame) => !frame.cancelled).length,
+	};
+}
+
+/** Runs the queued frames and the observer callbacks they cause, twice over, so chained writes settle. */
+async function settle(frames: ManualFrames): Promise<void> {
+	frames.flush();
+	await flushObserver();
+	frames.flush();
+	await flushObserver();
+}
+
+/** An indicator with the scroll track injected, its resize callback recorded and its frames queued by hand. */
+function trackedIndicator() {
+	const resize = recordingResize();
+	const frames = manualFrames();
+	const overflow = new OverflowIndicator(resize.observeResize, new ScrollTrack(frames.requestFrame));
+	return { overflow, resize, frames };
+}
+
+function trackIn(navbar: HTMLElement): HTMLElement {
+	const track = navbar.querySelector<HTMLElement>(`.${SCROLL_TRACK_CLASS}`);
+	if (track === null) throw new Error('no scroll track rendered');
+	return track;
+}
+
+describe('NavbarController scroll track', () => {
+	it('attaches exactly one scroll track as a direct child of the navbar on load, without looping', async () => {
+		const navbar = buildNavbar();
+		const { overflow, frames } = trackedIndicator();
+		const { controller, renderer } = setup(navbar, nativeItems(), { overflow });
+		const apply = vi.spyOn(renderer, 'apply');
+
+		controller.load();
+		await settle(frames);
+
+		expect(navbar.querySelectorAll(`:scope > .${SCROLL_TRACK_CLASS}`)).toHaveLength(1);
+		expect(navbar.querySelectorAll(`.${SCROLL_TRACK_CLASS}`)).toHaveLength(1);
+		expect(apply).toHaveBeenCalledTimes(1);
+	});
+
+	it('creates no scroll track and warns once when Obsidian exposes no navbar', () => {
+		const { overflow } = trackedIndicator();
+		const { controller, warn } = setup(null, nativeItems(), { overflow });
+
+		controller.load();
+		controller.setItems(nativeItems(['back']));
+		controller.unload();
+
+		expect(document.querySelectorAll(`.${SCROLL_TRACK_CLASS}`)).toHaveLength(0);
+		expect(warn).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not re-render on a scroll frame that only moves the thumb (KD-11)', async () => {
+		const navbar = buildNavbar();
+		overflowingRow(actionsRow(navbar));
+		const { overflow, resize, frames } = trackedIndicator();
+		const { controller, renderer } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+		resize.fire();
+		const row = actionsRow(navbar);
+		row.scrollLeft = 150;
+		row.dispatchEvent(new Event('scroll'));
+		await settle(frames);
+		const offsetBefore = trackIn(navbar).style.getPropertyValue(THUMB_PROGRESS_VAR);
+		const apply = vi.spyOn(renderer, 'apply');
+
+		row.scrollLeft = 160;
+		row.dispatchEvent(new Event('scroll'));
+		await settle(frames);
+
+		expect(trackIn(navbar).style.getPropertyValue(THUMB_PROGRESS_VAR)).not.toBe(offsetBefore);
+		expect(apply).not.toHaveBeenCalled();
+	});
+
+	it('renders once for a batch that mixes a thumb write with a foreign class', async () => {
+		const navbar = buildNavbar();
+		overflowingRow(actionsRow(navbar));
+		const { overflow, resize, frames } = trackedIndicator();
+		const { controller, renderer } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+		resize.fire();
+		const row = actionsRow(navbar);
+		row.scrollLeft = 150;
+		row.dispatchEvent(new Event('scroll'));
+		await settle(frames);
+		const apply = vi.spyOn(renderer, 'apply');
+
+		const offsetBefore = trackIn(navbar).style.getPropertyValue(THUMB_PROGRESS_VAR);
+		row.scrollLeft = 160;
+		row.dispatchEvent(new Event('scroll'));
+		frames.flush();
+		navbar.classList.add('some-foreign-class');
+		await flushObserver();
+		await settle(frames);
+
+		expect(trackIn(navbar).style.getPropertyValue(THUMB_PROGRESS_VAR)).not.toBe(offsetBefore);
+		expect(apply).toHaveBeenCalledTimes(1);
+	});
+
+	it('restores the navbar to its pristine markup on unload, with the track, a pending frame and a fired resize', () => {
+		const navbar = buildNavbar();
+		const original = navbar.outerHTML;
+		const row = actionsRow(navbar);
+		overflowingRow(row);
+		const { overflow, resize, frames } = trackedIndicator();
+		const { controller } = setup(navbar, nativeItems(), { overflow });
+		controller.load();
+		resize.fire();
+		row.scrollLeft = 150;
+		row.dispatchEvent(new Event('scroll'));
+		expect(frames.pending()).toBe(1);
+
+		controller.unload();
+
+		expect(navbar.outerHTML).toBe(original);
+		expect(frames.pending()).toBe(0);
 	});
 });

@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "phone": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": true
+    }
+  ],
+  "tablet": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": false
+    }
+  ],
+  "pins": {
+    "phone": {
+      "pinStart": "yes",
+      "pinEnd": 1,
+      "x-future-pin-middle": true
+    },
+    "tablet": {
+      "pinEnd": true
+    },
+    "x-future-desktop": {
+      "pinStart": true
+    }
+  }
+}

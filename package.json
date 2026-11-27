@@ -1,6 +1,6 @@
 {
   "name": "navbar-composer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,10 +17,13 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "version": "node version-bump.mjs && npm run compat:freeze && git add manifest.json versions.json tests/compat/fixtures tests/compat/compat.lock",
     "test": "vitest run",
+    "compat:freeze": "tsx scripts/compat-freeze.ts",
+    "compat:immutable": "bash scripts/compat-immutability.sh",
     "lint": "eslint . && npm run arch:check",
-    "arch:check": "depcruise src tests --config .dependency-cruiser.cjs"
+    "arch:check": "depcruise src tests --config .dependency-cruiser.cjs",
+    "check:webkit": "tsx scripts/webkit-check/run.ts"
   },
   "keywords": [
     "obsidian",
@@ -40,6 +43,7 @@
     "globals": "^17.14.0",
     "jsdom": "^31.0.1",
     "obsidian": "^1.14.4",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.73.0",
     "vitest": "^5.1.1"

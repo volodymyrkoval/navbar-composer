@@ -1,11 +1,16 @@
 import { Notice, Platform, Plugin } from 'obsidian';
 import { resolveDeviceMode, type DeviceMode } from './core/deviceMode';
-import { normalizeSettings } from './core/normalizeSettings';
+import { pinsFor } from './core/pins';
 import { ScrollDeltaTracker } from './core/scrollTracker';
 import type { Device, Settings } from './core/settingsModel';
 import { SettingsStore } from './core/settingsStore';
+import { splitStored, toStoredData, type StoredExtras, type StoredSplit } from './core/storedData';
+import { observeResize } from './dom/observeResize';
+import { requestFrame } from './dom/requestFrame';
 import { NavbarController } from './navbar/navbarController';
 import { NavbarRenderer } from './navbar/navbarRenderer';
+import { OverflowIndicator } from './navbar/overflowIndicator';
+import { ScrollTrack } from './navbar/scrollTrack';
 import { CommandRunner } from './platform/commandRunner';
 import { createObsidianInternals, type ObsidianInternals } from './platform/obsidianInternals';
 import { AddButtonFlow } from './settings/addButtonFlow';
@@ -31,20 +36,21 @@ export default class NavbarComposerPlugin extends Plugin {
 	}
 
 	async onload(): Promise<void> {
-		const store = this.#createStore(await this.#loadSettings());
+		const { settings, extras } = await this.#loadStored();
+		const store = this.#createStore(settings, extras);
 		this.#store = store;
 		const mode = resolveDeviceMode(Platform);
 		this.#registerSettingTab(store, mode);
 		this.#startDeviceController(store, mode);
 	}
 
-	async #loadSettings(): Promise<Settings> {
-		return normalizeSettings(await this.loadData());
+	async #loadStored(): Promise<StoredSplit> {
+		return splitStored(await this.loadData());
 	}
 
-	#createStore(initial: Settings): SettingsStore {
+	#createStore(initial: Settings, extras: StoredExtras): SettingsStore {
 		return new SettingsStore(initial, {
-			persist: (settings) => this.saveData(settings),
+			persist: (settings) => this.saveData(toStoredData(settings, extras)),
 			onPersistError: (error) => this.#reportSaveError(error),
 		});
 	}
@@ -86,13 +92,15 @@ export default class NavbarComposerPlugin extends Plugin {
 				{
 					internals,
 					renderer: new NavbarRenderer(),
+					overflow: new OverflowIndicator(observeResize, new ScrollTrack(requestFrame)),
 					runner: new CommandRunner(internals.commands),
 					warn: (message) => console.warn(message),
 				},
 				store.current[device],
+				pinsFor(store.current, device),
 			),
 		);
-		this.register(store.subscribe((settings) => controller.setItems(settings[device])));
+		this.register(store.subscribe((settings) => controller.setItems(settings[device], pinsFor(settings, device))));
 	}
 
 	#startTabletVisibility(store: SettingsStore): void {

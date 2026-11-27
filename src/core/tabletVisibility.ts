@@ -3,7 +3,6 @@
  * toolbar and context changes (KD1, KD8).
  */
 
-import { type NavItem } from './settingsModel';
 import { type ScrollDirection } from './scrollTracker';
 
 export interface VisibilityState {
@@ -59,9 +58,4 @@ function onToolbarChanged(state: VisibilityState, toolbarOpen: boolean): Visibil
 /** A new context starts with the bar shown again; the toolbar flag belongs to the editor, not the tab, so it stays. */
 function onContextChanged(state: VisibilityState, emptyTab: boolean): VisibilityState {
 	return { ...state, emptyTab, scrolledAway: false };
-}
-
-/** The tablet bar is shown only while at least one item is visible; an all-hidden list leaves the iPad unchanged (KD11). */
-export function shouldShowTabletBar(items: readonly NavItem[]): boolean {
-	return items.some((item) => item.visible);
 }

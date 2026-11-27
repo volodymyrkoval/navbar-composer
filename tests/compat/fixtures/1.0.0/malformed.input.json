@@ -1,0 +1,68 @@
+{
+  "version": "1",
+  "phone": [
+    "x",
+    null,
+    42,
+    [],
+    {
+      "kind": "group",
+      "id": "g1"
+    },
+    {
+      "kind": "native",
+      "id": "search",
+      "visible": true
+    },
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": "yes"
+    },
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": false
+    },
+    {
+      "kind": "custom",
+      "id": "c1",
+      "commandId": "app:go",
+      "icon": "star"
+    },
+    {
+      "kind": "custom",
+      "id": "c1",
+      "commandId": "app:other",
+      "icon": "x",
+      "label": "Dup",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "c2",
+      "commandId": "app:go",
+      "label": 7
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": false
+    }
+  ],
+  "tablet": [
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": true
+    },
+    {
+      "kind": "custom",
+      "id": "t1",
+      "commandId": "app:go",
+      "icon": "star",
+      "label": 5,
+      "visible": true
+    }
+  ]
+}

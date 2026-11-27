@@ -10,12 +10,14 @@ import {
 import type { CustomItem, Device, NavItem } from '../core/settingsModel';
 import type { SettingsStore } from '../core/settingsStore';
 import { moveUp, moveDown, removeCustom, restoreCustom, toggleVisible, withDevice } from '../core/listOps';
+import { isPinned, pinsFor, setPin } from '../core/pins';
 import type { CommandRegistry } from '../platform/obsidianInternals';
 import type { AddButtonFlow } from './addButtonFlow';
 import { type RowHandlers, renderItemRow } from './itemRow';
-import { buildPreviewModel, emptyPreviewText } from './previewModel';
+import { buildPreviewModel, emptyPreviewText, type PreviewButton, previewPins } from './previewModel';
 import { type PreviewHint, renderPreview } from './previewRenderer';
 import { buildRowModel, itemLabel } from './rowModel';
+import { PIN_TOGGLES, pinEdgeOfKey } from './pinToggles';
 
 const DEVICE_KEY = 'device';
 const HINT_DURATION_MS = 2000;
@@ -73,17 +75,39 @@ export class NavbarSettingTab extends PluginSettingTab {
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
-		return [this.#deviceDefinition(), this.#previewDefinition(), this.#buttonsDefinition()];
+		return [
+			this.#deviceDefinition(),
+			this.#previewDefinition(),
+			...this.#pinDefinitions(),
+			this.#buttonsDefinition(),
+		];
 	}
 
 	getControlValue(key: string): unknown {
-		return key === DEVICE_KEY ? this.#device : undefined;
+		return key === DEVICE_KEY ? this.#device : this.#pinValue(key);
 	}
 
 	setControlValue(key: string, value: unknown): void {
-		if (key !== DEVICE_KEY || !isDevice(value)) return;
+		if (key === DEVICE_KEY) this.#setDevice(value);
+		else this.#setPin(key, value);
+	}
+
+	#setDevice(value: unknown): void {
+		if (!isDevice(value)) return;
 		this.#device = value;
 		this.update();
+	}
+
+	#pinValue(key: string): unknown {
+		const edge = pinEdgeOfKey(key);
+		if (edge === null) return undefined;
+		return isPinned(pinsFor(this.#deps.store.current, this.#device), edge);
+	}
+
+	#setPin(key: string, value: unknown): void {
+		const edge = pinEdgeOfKey(key);
+		if (edge === null || typeof value !== 'boolean') return;
+		void this.#deps.store.update((settings) => setPin(settings, this.#device, edge, value));
 	}
 
 	#onSettingsChanged(): void {
@@ -101,14 +125,26 @@ export class NavbarSettingTab extends PluginSettingTab {
 	#previewDefinition(): SettingDefinition {
 		return {
 			name: 'Preview',
-			render: (setting) =>
-				renderPreview(
-					setting.controlEl.createDiv({ cls: 'navbar-composer-preview' }),
-					buildPreviewModel(this.#items(), (id) => this.#deps.commands.find(id) === null),
-					emptyPreviewText(this.#device),
-					previewHint(),
-				),
+			render: (setting) => this.#renderPreviewInto(setting.controlEl.createDiv({ cls: 'navbar-composer-preview' })),
 		};
+	}
+
+	#renderPreviewInto(el: HTMLElement): void {
+		const buttons = this.#previewButtons();
+		const pinned = previewPins(this.#deps.store.current, this.#device, buttons);
+		renderPreview(el, buttons, emptyPreviewText(this.#device), previewHint(), pinned);
+	}
+
+	#previewButtons(): PreviewButton[] {
+		return buildPreviewModel(this.#items(), (id) => this.#deps.commands.find(id) === null);
+	}
+
+	#pinDefinitions(): SettingDefinition[] {
+		return PIN_TOGGLES.map((toggle) => ({
+			name: toggle.name,
+			desc: toggle.desc,
+			control: { type: 'toggle', key: toggle.key },
+		}));
 	}
 
 	// No onReorder (drag handles are a no-go) and no onDelete (natives must not be deletable).

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "phone": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": false
+    },
+    {
+      "kind": "custom",
+      "id": "custom-hidden",
+      "commandId": "app:open-settings",
+      "icon": "settings",
+      "label": "Open settings",
+      "visible": false
+    }
+  ],
+  "tablet": [
+    {
+      "kind": "native",
+      "id": "back",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "forward",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "quick-switcher",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "new-tab",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "tabs",
+      "visible": false
+    },
+    {
+      "kind": "native",
+      "id": "menu",
+      "visible": false
+    }
+  ]
+}

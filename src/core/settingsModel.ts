@@ -8,6 +8,10 @@ export type NativeId = (typeof NATIVE_IDS)[number];
 
 export type Device = 'phone' | 'tablet';
 
+export const DEVICES = ['phone', 'tablet'] as const satisfies readonly Device[];
+
+export type PinEdge = 'start' | 'end';
+
 export interface NativeItem {
 	kind: 'native';
 	id: NativeId;
@@ -25,10 +29,19 @@ export interface CustomItem {
 
 export type NavItem = NativeItem | CustomItem;
 
+/** Per-layout pins. Absent field = off; the writer never stores `false`, the normaliser keeps a stored boolean as is. */
+export interface LayoutPins {
+	pinStart?: boolean;
+	pinEnd?: boolean;
+}
+
+export type Pins = Partial<Record<Device, LayoutPins>>;
+
 export interface Settings {
 	version: 1;
 	phone: NavItem[];
 	tablet: NavItem[];
+	pins?: Pins;
 }
 
 /** Tablet natives start hidden so installing the plugin leaves an iPad unchanged (KD11). */

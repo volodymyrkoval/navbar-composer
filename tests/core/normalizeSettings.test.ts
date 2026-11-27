@@ -138,4 +138,19 @@ describe('normalizeSettings', () => {
 		expect(result.phone).toEqual(natives(true));
 		expect(result.tablet).toEqual(natives(false));
 	});
+
+	it('passes valid stored pins through', () => {
+		const result = normalizeSettings({ version: 1, phone: [], tablet: [], pins: { phone: { pinStart: true } } });
+
+		expect(result).toStrictEqual({ ...createDefaultSettings(), pins: { phone: { pinStart: true } } });
+	});
+
+	it('omits the pins key when the stored pins hold nothing valid', () => {
+		expect(normalizeSettings({ version: 1, phone: [], tablet: [], pins: 'x' })).toStrictEqual(createDefaultSettings());
+		expect(normalizeSettings({ version: 1, phone: [], tablet: [], pins: {} })).toStrictEqual(createDefaultSettings());
+	});
+
+	it('omits the pins key for defaults', () => {
+		expect(normalizeSettings(undefined)).toStrictEqual(createDefaultSettings());
+	});
 });

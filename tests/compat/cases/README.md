@@ -1,0 +1,8 @@
+- `absent.json` — no data.json yet (`loadData()` returns null).
+- `defaults.json` — exactly what `createDefaultSettings()` produces (version 1, phone and tablet natives).
+- `all-hidden.json` — every native hidden on both devices, plus one hidden custom on phone (P02 empty state).
+- `malformed.json` — string version and bad phone items (non-record, unknown kind, wrong types, duplicate ids), missing natives on both devices.
+- `unknown-keys.json` — defaults plus top-level `x-future-*` keys (object, `false`, `null`, string) that must survive load, no-op edit and save.
+- `real-world.json` — a real-world phone and tablet layout, anonymised: custom ids and labels are neutral, the QuickAdd choice id is a fixed neutral UUID, built-in command ids are kept. Includes the non-Lucide icon `admonition-add-command` on purpose (an icon id from another plugin; a deliberate edge case).
+- `pinned.json` — per-layout pins (1.1.0+), including a stored `false`.
+- `pinned-malformed.json` — invalid pin values, an unknown inner key and an unknown device; only `tablet.pinEnd` survives.

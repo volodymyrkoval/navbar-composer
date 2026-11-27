@@ -1,0 +1,26 @@
+/*
+ * A hand copy of the Obsidian rules the navbar layout depends on, taken from device inspection (Obsidian 1.14, iOS and
+ * iPadOS, 2026-11-25). Obsidian can change them in any release and nothing here notices: when a device disagrees with
+ * the check, compare this file with the device first.
+ */
+:root { --size-4-2: 8px; --size-4-4: 16px; --text-normal: #dadada; --background-primary: #1e1e1e; --interactive-normal: #363636; }
+body { margin: 0; }
+
+body { --navbar-height: 52px; --navbar-bottom-offset: 34px; --navbar-width: 100%; --navbar-max-width: 100%; }
+body.is-phone:not(.is-floating-nav) { --navbar-height: 80px; }
+body.is-mobile.is-floating-nav { --navbar-width: fit-content; --navbar-max-width: 316px; }
+
+.mobile-navbar {
+	position: fixed; bottom: 0; left: 0; right: 0; display: flex; margin: 0 auto; box-sizing: border-box;
+	width: var(--navbar-width); max-width: var(--navbar-max-width); height: var(--navbar-height);
+	padding: 0 var(--size-4-2) var(--navbar-bottom-offset);
+}
+.is-floating-nav .mobile-navbar { padding-bottom: 0; bottom: 20px; }
+.is-mobile.is-floating-nav .mod-raised { border: 0.5px solid transparent; }
+.mobile-navbar-actions { display: flex; align-items: center; justify-content: space-between; padding: 0; width: 100%; }
+.mobile-navbar-action {
+	position: relative; display: flex; justify-content: center; box-sizing: border-box; align-self: stretch;
+	width: var(--navbar-height); flex: 1 1 auto;
+}
+.mobile-navbar-action > span { width: 38px; }
+.mobile-navbar-action.has-longpress-menu { margin-inline-start: var(--size-4-2); }

@@ -36,6 +36,32 @@ describe('plugin on desktop', () => {
 		expect(lastId(savedSettings(plugin), 'phone')).toBe('c1');
 	});
 
+	it('keeps unknown top-level keys when saving', async () => {
+		const futureFlag = true;
+		const futureObject = { a: [1, null] };
+		const stored = { ...createDefaultSettings(), 'x-future-flag': futureFlag, 'x-future-object': futureObject };
+		const { plugin } = await loadPlugin({ device: 'desktop', stored });
+
+		await plugin.store.update((s) => withCustom(s, 'phone', customItem()));
+
+		const saved = savedSettings(plugin) as unknown as Record<string, unknown>;
+		expect(saved['x-future-flag']).toStrictEqual(futureFlag);
+		expect(saved['x-future-object']).toStrictEqual(futureObject);
+		expect(lastId(savedSettings(plugin), 'phone')).toBe('c1');
+	});
+
+	it('saves only the known keys when stored data is not an object', async () => {
+		const { plugin } = await loadPlugin({ device: 'desktop', stored: [1, 2] });
+
+		await plugin.store.update((s) => withCustom(s, 'phone', customItem()));
+
+		expect(Object.keys(savedSettings(plugin) as unknown as Record<string, unknown>).sort()).toStrictEqual([
+			'phone',
+			'tablet',
+			'version',
+		]);
+	});
+
 	it('keeps the in-memory state and shows a Notice when saving fails', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { plugin } = await loadPlugin({ device: 'desktop' });

@@ -33,6 +33,13 @@ export class Component {
 		return child;
 	}
 
+	removeChild<T extends Component>(child: T): T {
+		const index = this.children.indexOf(child);
+		if (index !== -1) this.children.splice(index, 1);
+		child.unload();
+		return child;
+	}
+
 	register(cleanup: Cleanup): void {
 		this.cleanups.push(cleanup);
 	}

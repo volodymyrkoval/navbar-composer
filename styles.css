@@ -3,6 +3,15 @@
  * class names; never hardcode colors or set inline styles from code.
  */
 
+/*
+ * Revision marker for on-device test rounds (KD-20): bumped at the start of each round. The device checklist
+ * reads it with getComputedStyle(document.body).getPropertyValue('--navbar-composer-css-rev') to confirm the device
+ * runs this stylesheet, not a cached one. A custom property on body has no visual effect.
+ */
+body {
+	--navbar-composer-css-rev: "1.1.0";
+}
+
 /* Native navbar: hide an action the user turned off (AC5). */
 .navbar-composer-hidden {
 	display: none !important;
@@ -62,7 +71,7 @@ body.navbar-composer-tablet-bar-shown .mobile-navbar-action {
  * and hidden on scroll with `.is-hidden-nav .mobile-navbar { transform: translateY(...) }`; neither is touched.
  * The row's `overflow-y: hidden` clips nothing: the buttons are the row's full height and the menu's flair
  * (`position: absolute; top: 0; height: 100%`) stays inside it; it may lose a pixel or two at the left edge when
- * the menu is the first button. The non-floating phone bar (full width, buttons shrink) is left alone.
+ * the menu is the first button. The non-floating phone bar scrolls only in scroll mode (see below).
  */
 body.is-phone.is-floating-nav .mobile-navbar:has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden))) {
 	max-width: calc(100vw - 2 * var(--size-4-4));
@@ -93,6 +102,387 @@ body.is-phone.is-floating-nav .mobile-navbar:is(:has(.navbar-composer-action), :
 	margin-inline-start: 0;
 }
 
+/* Same condition, on the row: a pinned menu button's spacer (see "Pinned buttons") then carries no margin either. */
+body.is-phone.is-floating-nav .mobile-navbar:is(:has(.navbar-composer-action), :has(.mobile-navbar-action:nth-child(7 of :not(.navbar-composer-hidden)))) .mobile-navbar-actions {
+	--navbar-composer-menu-gap: 0px;
+}
+
+/*
+ * Non-floating phone bar, scroll mode (KD-19, C3). 1.0.0 left this bar alone, so 15 buttons shrank to 38px and overflowed
+ * past the screen edge. `navbar-composer-scroll-mode` is written on the row by `needsScrollMode` (visible button count
+ * against the row's width, no history), so it is on only when the buttons cannot fit at their 38px floor (N3: 11 buttons
+ * overflow a 414px row, 10 fit). A bar that fits keeps Obsidian's shrunk look. The row stays `space-between` with no
+ * `justify-content`: with no free space that starts at the left (N3), so the first button stays reachable. The floating
+ * rules above are untouched.
+ */
+body.is-phone:not(.is-floating-nav) .mobile-navbar-actions.navbar-composer-scroll-mode {
+	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+body.is-phone:not(.is-floating-nav) .mobile-navbar-actions.navbar-composer-scroll-mode::-webkit-scrollbar {
+	display: none;
+}
+
+/*
+ * Obsidian's buttons shrink (flex-shrink 1) and their base width is `var(--navbar-height)`. On this bar that variable is
+ * 80px (measured on device, N3: the full-width pill's height includes the 34px safe-area bottom padding), so `flex: none`
+ * alone would make each scroll-mode button 80px wide. `width: 52px` matches the buttons of the floating bar, where
+ * `--navbar-height` is 52px. `flex: none` keeps that width, so the row scrolls (N3: a shrinking button's floor is 38px).
+ */
+body.is-phone:not(.is-floating-nav) .mobile-navbar-actions.navbar-composer-scroll-mode > .mobile-navbar-action {
+	flex: none;
+	width: 52px;
+}
+
+/*
+ * Fade the edge that holds more buttons. The mask sits on the scrolling row, never the pill: the pill draws the
+ * background, and masking it would fade its rounded edge too. Each edge's alpha is 1 (no fade) by default and 0
+ * once the row overflows on that side, so the gradient runs from transparent to opaque over `--navbar-composer-fade`.
+ * The gradient starts and ends past the pinned buttons (pin widths default to 0px). LTR only (`to right`); the
+ * toggle is instant, no transition or animation.
+ */
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) {
+	--navbar-composer-fade: 32px;
+	--navbar-composer-fade-start-alpha: 1;
+	--navbar-composer-fade-end-alpha: 1;
+	--navbar-composer-fade-mask: linear-gradient(to right, #000 var(--navbar-composer-pin-start-w, 0px), rgb(0 0 0 / var(--navbar-composer-fade-start-alpha)) var(--navbar-composer-pin-start-w, 0px), #000 calc(var(--navbar-composer-pin-start-w, 0px) + var(--navbar-composer-fade)), #000 calc(100% - var(--navbar-composer-pin-end-w, 0px) - var(--navbar-composer-fade)), rgb(0 0 0 / var(--navbar-composer-fade-end-alpha)) calc(100% - var(--navbar-composer-pin-end-w, 0px)), #000 calc(100% - var(--navbar-composer-pin-end-w, 0px)));
+	-webkit-mask-image: var(--navbar-composer-fade-mask);
+	mask-image: var(--navbar-composer-fade-mask);
+}
+
+.mobile-navbar-actions.navbar-composer-has-overflow-start {
+	--navbar-composer-fade-start-alpha: 0;
+}
+
+.mobile-navbar-actions.navbar-composer-has-overflow-end {
+	--navbar-composer-fade-end-alpha: 0;
+}
+
+/*
+ * Faint colours (KD-17, N1 measurements): translucent `--text-normal`, so the contrast follows the pill under it.
+ * One set of percentages for every device and theme (iPhone and iPad, light and dark, all measured 15 / 55 / 20%).
+ * Hairline 20%, track 15%, thumb 55%. Declared on body so the bar, its settings preview and the track inherit them.
+ */
+body {
+	--navbar-composer-faint: color-mix(in srgb, var(--text-normal) 20%, transparent);
+	--navbar-composer-track: color-mix(in srgb, var(--text-normal) 15%, transparent);
+	--navbar-composer-thumb: color-mix(in srgb, var(--text-normal) 55%, transparent);
+}
+
+/*
+ * Scroll track: a 2px line under the icons that shows where the visible part sits in the row. It lives on the pill,
+ * not the row, so the row's fade mask and classes stay untouched (KD-10). The pill is `position: fixed`, so it is
+ * already the containing block (its padding box). `bottom: 5px` centres the 2px line in the 13px gap below the icons
+ * (floating bar; the non-floating bar is N15). Width: a third of the pill, at most 160px (C1, KD-15; 160px is the
+ * iPad cap). Colour: the track token (15%, N1, KD-17). Hidden by default; the show rule below is the only way it
+ * appears, and only while the row overflows. LTR only, no transition: the thumb moves with scroll position.
+ */
+.mobile-navbar > .navbar-composer-scroll-track {
+	display: none;
+	position: absolute;
+	left: 50%;
+	bottom: 5px;
+	width: min(calc(100% / 3), 160px);
+	height: 2px;
+	translate: -50% 0;
+	border-radius: 1px;
+	background-color: var(--navbar-composer-track);
+	overflow: hidden;
+	pointer-events: none;
+}
+
+/*
+ * Non-floating phone bar geometry (N3, measured on iPhone, floating navigation off, light, 2026-11-25). The pill is full
+ * width, 80px high with a 34px bottom padding (`--navbar-bottom-offset`), and the row (46px) sits at its top. The lowest
+ * icon ends 10px above the row's bottom edge, so the gap to centre the 2px track in is 10px.
+ * - Track (N15 a): 34px + 4px = (10 - 2) / 2 above the pill's bottom edge, which puts the line at 892-894 in the 888-898
+ *   gap. The floating bar keeps `bottom: 5px`.
+ * - Segment (N15 b): no change. The row spans the bar's height above the padding and the bar is opaque
+ *   `--background-primary`, the pinned segment's colour for this mode (E2b).
+ * - Caps: not needed (N3: radius 0, opaque bar). N10's rules are scoped to `body.is-floating-nav`.
+ * - Hairline (N15 d): unchanged, the row is 46px tall (above 22px).
+ */
+body.is-phone:not(.is-floating-nav) .mobile-navbar > .navbar-composer-scroll-track {
+	bottom: calc(var(--navbar-bottom-offset) + 4px);
+}
+
+/*
+ * The thumb's size comes from the track's own width (KD-15): ScrollTrack writes the unitless ratio and progress on the
+ * track element and they inherit here. `100%` is the track's width. The 8px floor lives here, not in core. `left` is
+ * computed, not `translate`, because a percentage `translate` would refer to the thumb itself. No transition.
+ * Colour: the thumb token (55%, N1, KD-17).
+ */
+.navbar-composer-scroll-thumb {
+	--navbar-composer-thumb-size: max(8px, calc(var(--navbar-composer-scroll-thumb-ratio, 0) * 100%));
+	position: absolute;
+	top: 0;
+	left: calc((100% - var(--navbar-composer-thumb-size)) * var(--navbar-composer-scroll-thumb-progress, 0));
+	height: 100%;
+	width: var(--navbar-composer-thumb-size);
+	border-radius: 1px;
+	background-color: var(--navbar-composer-thumb);
+}
+
+/* Show the track only while the row overflows on either side (same edge classes as the fade). */
+.mobile-navbar:has(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-scroll-track {
+	display: block;
+}
+
+/*
+ * Pinned buttons (KD-3, KD-14): the start and end pin stay at their edge while the row scrolls and bounces. Only while
+ * the row overflows, so a bar that fits is unchanged (KD-3). A sticky button is part of the scrolled content and moves
+ * with the iOS rubber-band, so the pinned button is `position: absolute` with the pill as its containing block: the row
+ * is `position: static` and the pill is `position: fixed` (measured on iPhone floating and non-floating and on iPad).
+ * Offsets mirror the pill's padding, so nothing is measured in code. The row's ::before / ::after (free in all three
+ * modes) are spacers that hold the button's place. Invariant: pinning must change neither the row's scroll width nor the pill's
+ * width, or the overflow classes hold themselves on. So a spacer takes a real `width`: WebKit ignores a flex-basis in
+ * the width of the content-sized pill, which left it one button narrower per pin (rc3 retest). Accepted: a swipe that starts on a pinned button does not
+ * scroll the row. `order` keeps the spacers outside every button's order. No transition: instant.
+  *
+ * On the non-floating phone bar these rules apply only in scroll mode (the `:not(…)` in each selector). Outside it the
+ * buttons shrink to fit but a spacer cannot, so an overflow class left over from a fuller bar would hold itself on
+ * (final review of rc4: 9 buttons at 375px, 10 at 412px and 414px).
+*/
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-start, > .navbar-composer-pinned-end) {
+	--navbar-composer-pin-size: var(--navbar-height);
+	--navbar-composer-pin-bottom: 0px;
+	position: static;
+}
+
+/* Non-floating phone bar: `--navbar-height` is the whole bar (80px), the buttons are 52px, and the row sits above the bottom padding. */
+body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-start, > .navbar-composer-pinned-end) {
+	--navbar-composer-pin-size: 52px;
+	--navbar-composer-pin-bottom: var(--navbar-bottom-offset);
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)) > :is(.navbar-composer-pinned-start, .navbar-composer-pinned-end) {
+	position: absolute;
+	top: 0;
+	bottom: var(--navbar-composer-pin-bottom);
+	width: var(--navbar-composer-pin-size);
+	height: auto;
+	margin: 0;
+	z-index: 1;
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)) > .navbar-composer-pinned-start {
+	inset-inline: var(--size-4-2) auto;
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)) > .navbar-composer-pinned-end {
+	inset-inline: auto var(--size-4-2);
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-start)::before {
+	content: '';
+	flex: none;
+	width: var(--navbar-composer-pin-size);
+	order: -1;
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-end)::after {
+	content: '';
+	flex: none;
+	width: var(--navbar-composer-pin-size);
+	order: 99999;
+}
+
+/* A pinned menu button had Obsidian's start margin in the flow (8px); its spacer keeps it, at either end. */
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-start.has-longpress-menu)::before,
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end):not(body.is-phone:not(.is-floating-nav) .mobile-navbar-actions:not(.navbar-composer-scroll-mode)):has(> .navbar-composer-pinned-end.has-longpress-menu)::after {
+	margin-inline-start: var(--navbar-composer-menu-gap, var(--size-4-2));
+}
+
+/*
+ * Settings preview (L5, KD-12): its pins stay sticky. The preview pill is itself the scroller, so they are part of its
+ * content; they are pinned whether or not the preview overflows. Each edge has its own rule: a sticky box with both
+ * inset-inline-start and inset-inline-end set is held at both edges (A2 on iPad).
+ */
+.navbar-composer-preview > .navbar-composer-preview-pinned-start {
+	position: sticky;
+	inset-inline-start: 0;
+	z-index: 1;
+}
+
+.navbar-composer-preview > .navbar-composer-preview-pinned-end {
+	position: sticky;
+	inset-inline-end: 0;
+	z-index: 1;
+}
+
+/*
+ * Hairline between a pin and the scrolling part (A2(a): no native ::after; colour from the faint token, KD-17, not the
+ * border colour, which vanishes on the dark and white pills). Width 1px, never sub-pixel: at 0.5px WebKit dropped the
+ * start hairline on a row at a fractional x (rc1 retest, F2). No background and no border-radius here: the opaque end
+ * segment is painted by E2b (KD-14, A2(b)/(d)).
+ */
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-start::after,
+.navbar-composer-preview > .navbar-composer-preview-pinned-start::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	inset-inline-end: 0;
+	height: 22px;
+	translate: 0 -50%;
+	border-inline-end: 1px solid var(--navbar-composer-faint);
+	pointer-events: none;
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-end::after,
+.navbar-composer-preview > .navbar-composer-preview-pinned-end::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	inset-inline-start: 0;
+	height: 22px;
+	translate: 0 -50%;
+	border-inline-start: 1px solid var(--navbar-composer-faint);
+	pointer-events: none;
+}
+
+/*
+ * Opaque patch behind each pinned button (E2b, KD-14; decision (a) of 2026-11-25, KD-16: pill-level end caps on the
+ * pill's ::before, see below). The pill's own background is translucent on the phone, so scrolled icons would show
+ * through a transparent pinned button; the patch hides them. `--navbar-composer-pin-bg` is an opaque flat colour equal
+ * to the pill's TOP stop, built from the same variables Obsidian uses (A3 "Rules declaring --raised-background"):
+ * `--blur-background` is `var(--background-primary)` in light and `var(--interactive-normal)` under `.theme-dark`
+ * (floating phone pill); non-floating phone and iPad use `var(--background-primary)` in both themes. Selectors follow
+ * Obsidian's own split (`.is-phone`, `.is-floating-nav`, `.theme-dark`, `.is-tablet`). No blur on the patch (the row's
+ * fade mask makes it a backdrop root, see the technical notes). Not mirrored: the lower part of the pill's gradient
+ * fades to 65%, so a small colour step at the bottom of the phone patch is expected (accepted, judged on device).
+ */
+body.is-phone.is-floating-nav .mobile-navbar,
+body.is-tablet .mobile-navbar,
+body.is-phone:not(.is-floating-nav) .mobile-navbar {
+	--navbar-composer-pin-bg: var(--background-primary);
+}
+
+body.theme-dark.is-phone.is-floating-nav .mobile-navbar {
+	--navbar-composer-pin-bg: var(--interactive-normal);
+}
+
+/*
+ * The patch: the pinned button's ::before (E2a uses ::after for the hairline; A3: the buttons' ::before is free).
+ * It fills the button's box, which is the row's full height (A3: gap 0.33px phone / 0.5px iPad), and paints between
+ * the button's own background and its icon (z-index -1 inside the pinned button's stacking context). Only while the
+ * row overflows (E1's classes), so a bar that fits is unchanged; the settings preview (L5) is the exception, see its
+ * block below. Selector list on purpose: the preview's pinned items append their own selectors to this rule.
+ */
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-start::before,
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-end::before,
+.navbar-composer-preview > .navbar-composer-preview-pinned-start::before,
+.navbar-composer-preview > .navbar-composer-preview-pinned-end::before {
+	content: '';
+	position: absolute;
+	z-index: -1;
+	inset: 0;
+	background: var(--navbar-composer-pin-bg);
+	pointer-events: none;
+}
+
+/*
+ * Outer corners of the patch, floating bars only. The pill has `overflow: visible`, so nothing clips the patch: a square
+ * corner sticks out past the pill's curve (rc1 retest, F1). Radius = the pill's 26px curve minus the 8px the row sits
+ * in from the pill's end (A3: 17.67px phone, 17.5px iPad). The cap below fills what the rounding leaves open.
+ */
+body.is-phone.is-floating-nav .mobile-navbar {
+	--navbar-composer-pin-radius: 17.67px;
+}
+
+body.is-tablet.is-floating-nav .mobile-navbar {
+	--navbar-composer-pin-radius: 17.5px;
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-start::before {
+	border-start-start-radius: var(--navbar-composer-pin-radius, 0px);
+	border-end-start-radius: var(--navbar-composer-pin-radius, 0px);
+}
+
+.mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-end::before {
+	border-start-end-radius: var(--navbar-composer-pin-radius, 0px);
+	border-end-end-radius: var(--navbar-composer-pin-radius, 0px);
+}
+
+/*
+ * End caps on the pill's ::before (N10, KD-16; decision (a) of 2026-11-25 replaces (b)). On iPhone dark the segment
+ * read as a box stopping short of the rounded end with a crescent of the pill's own background beside it (device
+ * test, change 2). The cap paints the pinned colour over the pill's end strip, clipped by the pill's own curve. The
+ * pill's ::after is Obsidian's on iOS (A3) so the cap uses ::before, which is free (risk: a theme or plugin that
+ * styles the pill's ::before is overridden while a pin is active and the row overflows). Floating bars only
+ * (`body.is-floating-nav`; phone and iPad both carry it, A3); the non-floating phone bar is N15.
+ * Accepted by the user: the pill's inset edge lines are hidden over the end strip, and a slight colour step against
+ * the phone pill's lower 65% fade on iPhone dark.
+ *
+ * Geometry (checked on device, rc2 retest):
+ * - Cap width = pill inline padding `--size-4-2` (8px) + the segment's corner radius, so the cap sits behind both
+ *   rounded outer corners of the segment (same flat `--navbar-composer-pin-bg`) and leaves no notch or seam. The pill's
+ *   border (0.33px phone, 0.5px iPad) is outside the padding box and not part of the cap: this ::before is
+ *   positioned against the padding box (`inset: 0`), so it starts at the padding edge.
+ * - Paint order: the pill is `position: fixed` (a stacking context). `z-index: -1` paints above the pill's own
+ *   background and inset box-shadows, below the row, below Obsidian's ::after ring (z-index 1) and the scroll track.
+ *   On device the ring around a pinned end still reads at about a quarter of its normal contrast (accepted).
+ * - `border-radius: inherit` gives the padding box the pill's 52px radius, which resolves to half the box height
+ *   (about 26px). The true inner radius is 52px minus the border (0.33px / 0.5px), a difference below a device
+ *   pixel on a 26px curve, so `inherit` is kept.
+ * - Both layers live in one element; a layer is 0px wide when its pin is absent, so a bar with one pin paints one
+ *   cap and a bar with both pins paints both.
+ * - A horizontal pill gradient would not line up with the flat colour; the phone pill's gradient is vertical.
+ */
+body.is-floating-nav .mobile-navbar:has(> .mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-start) {
+	--navbar-composer-cap-start: calc(var(--size-4-2) + var(--navbar-composer-pin-radius, 0px));
+}
+
+body.is-floating-nav .mobile-navbar:has(> .mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > .navbar-composer-pinned-end) {
+	--navbar-composer-cap-end: calc(var(--size-4-2) + var(--navbar-composer-pin-radius, 0px));
+}
+
+body.is-floating-nav .mobile-navbar:has(> .mobile-navbar-actions:is(.navbar-composer-has-overflow-start, .navbar-composer-has-overflow-end) > :is(.navbar-composer-pinned-start, .navbar-composer-pinned-end))::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	pointer-events: none;
+	background:
+		linear-gradient(var(--navbar-composer-pin-bg), var(--navbar-composer-pin-bg)) left / var(--navbar-composer-cap-start, 0px) 100% no-repeat,
+		linear-gradient(var(--navbar-composer-pin-bg), var(--navbar-composer-pin-bg)) right / var(--navbar-composer-cap-end, 0px) 100% no-repeat;
+}
+
+/*
+ * Settings preview: the pinned look always (KD-12, Q14), and no fade and no scroll track (KD-13). The preview pill is
+ * its own scroll container, and its padding keeps a pinned item inside the rounded end (L1). Scrolled items can pass
+ * through that padding strip, so the segment reaches over it: vertically to the pill's inner edges, outward to the
+ * scroller's edge. The scroller's 999px radius already clips the outer corners, so the segment needs no radius of its
+ * own. The preview's opaque background is its colour; the per-device values are for the bar only.
+ */
+.navbar-composer-preview {
+	--navbar-composer-pin-bg: var(--background-secondary);
+}
+
+.navbar-composer-preview > .navbar-composer-preview-pinned-start::before {
+	inset-block: calc(-1 * var(--size-4-2));
+	inset-inline-start: calc(-1 * var(--size-4-3));
+}
+
+.navbar-composer-preview > .navbar-composer-preview-pinned-end::before {
+	inset-block: calc(-1 * var(--size-4-2));
+	inset-inline-end: calc(-1 * var(--size-4-3));
+}
+
+/*
+ * No visible phone item means no bar (AC2). The rule is keyed on our own `navbar-composer-empty` class, not on
+ * Obsidian's `is-floating-nav` or `is-hidden-nav`, so it applies to both the floating and the full-width phone bar.
+ * `!important` keeps it winning over Obsidian's hide-on-scroll transform while that is active. Tablet is unaffected:
+ * its body class is not `is-phone`.
+ */
+body.is-phone .mobile-navbar.navbar-composer-empty {
+	display: none !important;
+}
+
 /* Scrolled away or editing toolbar open: slide the bar out (AC9, KD8). */
 body.navbar-composer-tablet-bar-shown .mobile-navbar.navbar-composer-bar-hidden {
 	opacity: 0 !important;
@@ -100,14 +490,26 @@ body.navbar-composer-tablet-bar-shown .mobile-navbar.navbar-composer-bar-hidden 
 	pointer-events: none;
 }
 
-/* Settings: live preview of the navbar layout. */
+/*
+ * Settings: live preview of the navbar layout. Too many buttons for the width (e.g. nine tablet buttons in phone
+ * settings) keep one line and scroll like the real bar, instead of wrapping into a tall lozenge with an orphan icon.
+ * `min-width: 0` and `max-width: 100%` stop the pill growing past the control area. Buttons are centred with auto
+ * margins (below), not `justify-content: center`: auto margins drop to 0 on overflow, so the first button stays
+ * reachable, while centring would push it off the left edge.
+ */
 .navbar-composer-preview {
 	display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--size-4-2);
+	min-width: 0;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
 	min-height: var(--size-4-12);
 	padding: var(--size-4-2) var(--size-4-3);
 	border: 1px solid var(--background-modifier-border);
@@ -115,7 +517,8 @@ body.navbar-composer-tablet-bar-shown .mobile-navbar.navbar-composer-bar-hidden 
 	background-color: var(--background-secondary);
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-	line-height: 1;
+	line-height: var(--line-height-tight);
+	text-align: center;
 	box-sizing: border-box;
 }
 
@@ -127,6 +530,44 @@ body.navbar-composer-tablet-bar-shown .mobile-navbar.navbar-composer-bar-hidden 
 
 .setting-item-control > .navbar-composer-preview {
 	align-self: center;
+}
+
+/*
+ * iPad (Device = Tablet) preview: the row is a flex row, and the control's automatic minimum width is the whole icon
+ * row (M1: 858px in a 589px card), which squeezes the "Preview" label to 0 and gives the pill no definite width to
+ * scroll in. Fixed on the control, not the pill: the pill's own `min-width: 0` does not lower the control's minimum.
+ * `min-width: 0` lets the control shrink to the card, so the pill's `max-width: 100%` has a box to resolve against;
+ * `flex-shrink: 0` on the info box keeps the label. Scoped to `body:not(.is-phone)`: the phone stacks the row through
+ * Obsidian's `.is-phone .modal` rules and is untouched. Desktop is also a row layout and gets the same fix, which is
+ * wanted (its preview already scrolls; M3 checks it). The extra `body` class is enough to out-rank Obsidian's rules.
+ */
+body:not(.is-phone) .setting-item-control:has(> .navbar-composer-preview) {
+	min-width: 0;
+}
+
+body:not(.is-phone) .setting-item:has(> .setting-item-control > .navbar-composer-preview) > .setting-item-info {
+	flex-shrink: 0;
+}
+
+.navbar-composer-preview::-webkit-scrollbar {
+	display: none;
+}
+
+/* The empty-state text has no buttons to carry auto margins, so it is centred the usual way. */
+.navbar-composer-preview:not(:has(> .navbar-composer-preview-item)) {
+	justify-content: center;
+}
+
+.navbar-composer-preview > .navbar-composer-preview-item {
+	flex: none;
+}
+
+.navbar-composer-preview > .navbar-composer-preview-item:first-child {
+	margin-inline-start: auto;
+}
+
+.navbar-composer-preview > .navbar-composer-preview-item:last-child {
+	margin-inline-end: auto;
 }
 
 .navbar-composer-preview-item {

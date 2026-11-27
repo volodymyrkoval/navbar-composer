@@ -47,4 +47,18 @@ describe('Component fake', () => {
 
 		expect(onClick).toHaveBeenCalledTimes(1);
 	});
+
+	it('unloads a removed child once and does not unload it again with the parent', () => {
+		const parent = new Component();
+		const child = new Component();
+		const cleanup = vi.fn();
+		child.register(cleanup);
+		parent.addChild(child);
+
+		parent.load();
+		parent.removeChild(child);
+		parent.unload();
+
+		expect(cleanup).toHaveBeenCalledTimes(1);
+	});
 });

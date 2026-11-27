@@ -1,7 +1,8 @@
 import { NATIVE_META } from '../core/nativeMeta';
-import { type Device, isCustomItem, type NavItem } from '../core/settingsModel';
+import { type Device, isCustomItem, type NavItem, type Settings } from '../core/settingsModel';
+import { type PinnedEdgeIds, pinnedEdgeIds, pinsFor } from '../core/pins';
 
-const PHONE_EMPTY_TEXT = 'No visible buttons. The navbar is empty.';
+const PHONE_EMPTY_TEXT = 'The navigation bar is hidden. Use the sidebar to reach settings and tabs.';
 const TABLET_EMPTY_TEXT = 'The bar is hidden on tablet until you show at least one button.';
 
 /** One button of the live preview. `missing` marks a custom button whose command no longer exists (AC11). */
@@ -33,4 +34,12 @@ function toPreviewButton(item: NavItem, isMissing: (commandId: string) => boolea
 /** What a tap or hover on a preview button shows: its label, plus a warning when the command is gone. */
 export function hintText(button: PreviewButton): string {
 	return button.missing ? `${button.label} (command not found)` : button.label;
+}
+
+/**
+ * Which preview buttons get the pinned look for `device`: the bar's own rule (`pinnedEdgeIds`) over the ids of the
+ * visible preview list, so hiding, reordering and the one-button rule (Q6) match the bar. Reads only `settings.pins`.
+ */
+export function previewPins(settings: Settings, device: Device, buttons: readonly PreviewButton[]): PinnedEdgeIds {
+	return pinnedEdgeIds(buttons.map((button) => button.id), pinsFor(settings, device));
 }

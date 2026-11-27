@@ -28,6 +28,10 @@ describe('isCustomItem', () => {
 });
 
 describe('createDefaultSettings', () => {
+	it('has no pins key, so pins stay absent until the user sets one', () => {
+		expect('pins' in createDefaultSettings()).toBe(false);
+	});
+
 	it('gives the phone six visible natives in the Obsidian DOM order', () => {
 		const { phone } = createDefaultSettings();
 

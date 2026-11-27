@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { toggleVisible, withDevice } from '../../src/core/listOps';
+import { setPin } from '../../src/core/pins';
 import { createDefaultSettings, NATIVE_IDS } from '../../src/core/settingsModel';
+import { PINNED_END_CLASS, PINNED_START_CLASS } from '../../src/navbar/navbarRenderer';
+import { OVERFLOW_END_CLASS } from '../../src/navbar/overflowIndicator';
+import { SCROLL_TRACK_CLASS, THUMB_RATIO_VAR } from '../../src/navbar/scrollTrack';
 import { buildNavbar } from '../fixtures/navbarFixture';
-import { customItem, loadPlugin, resetEnvironment, withCustom } from './harness';
+import { customItem, FakeResizeObserver, loadPlugin, overflowingRow, resetEnvironment, stubFrames, withCustom } from './harness';
 
 const SHOWN = 'navbar-composer-tablet-bar-shown';
 const BAR_HIDDEN = 'navbar-composer-bar-hidden';
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
 	resetEnvironment();
 });
 
@@ -148,5 +153,54 @@ describe('plugin on tablet', () => {
 		const { settingTabs } = await loadPlugin({ device: 'tablet' });
 
 		expect(settingTabs).toHaveLength(1);
+	});
+
+	it('pins the last visible item from the tablet pins only, never the phone pins', async () => {
+		const navbar = buildNavbar();
+		const withTabletEnd = setPin(showBack(createDefaultSettings()), 'tablet', 'end', true);
+		const stored = setPin(withTabletEnd, 'phone', 'start', true);
+
+		await loadPlugin({ device: 'tablet', navbar, stored });
+
+		expect(action(navbar, 'back').classList.contains(PINNED_END_CLASS)).toBe(true);
+		expect(navbar.querySelector(`.${PINNED_START_CLASS}`)).toBeNull();
+	});
+
+	describe('scroll track', () => {
+		it('shows one track in the pill while the row overflows, never inside the row', async () => {
+			vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+			stubFrames();
+			const navbar = buildNavbar();
+			const row = overflowingRow(navbar);
+			await loadPlugin({ device: 'tablet', navbar, stored: showBack(createDefaultSettings()) });
+
+			FakeResizeObserver.latest!.fire();
+
+			const tracks = navbar.querySelectorAll(`:scope > .${SCROLL_TRACK_CLASS}`);
+			expect(tracks).toHaveLength(1);
+			expect(row.querySelector(`.${SCROLL_TRACK_CLASS}`)).toBeNull();
+			expect(row.classList.contains(OVERFLOW_END_CLASS)).toBe(true);
+			expect((tracks[0] as HTMLElement).style.getPropertyValue(THUMB_RATIO_VAR)).toBe('0.5');
+		});
+
+		it('restores the pristine navbar on unload with pins, a scrolled row and a pending frame', async () => {
+			vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+			const frames = stubFrames();
+			const navbar = buildNavbar();
+			const pristine = navbar.outerHTML;
+			const row = overflowingRow(navbar);
+			const stored = setPin(setPin(showBack(createDefaultSettings()), 'tablet', 'start', true), 'tablet', 'end', true);
+			const { plugin } = await loadPlugin({ device: 'tablet', navbar, stored });
+			FakeResizeObserver.latest!.fire();
+			frames.flush();
+			row.scrollLeft = 150;
+			row.dispatchEvent(new Event('scroll'));
+			expect(frames.pending()).toBe(1);
+
+			plugin.unload();
+
+			expect(navbar.outerHTML).toBe(pristine);
+			expect(frames.pending()).toBe(0);
+		});
 	});
 });
